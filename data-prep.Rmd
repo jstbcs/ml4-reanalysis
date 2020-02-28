@@ -1,0 +1,341 @@
+---
+title: "Data Sets for Many-Analyses"
+author: "Julia Haaf"
+date: "2/28/2020"
+output: pdf_document
+---
+
+This document takes the original data and subsets it using different exclusion criteria. It is therefore a documentation of all data sets used in the many-analyses.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(metafor)
+library(tidyverse)
+```
+
+```{r prep-fun, include = F}
+analysis <- function(data)
+{
+  # create statistics after filtering for cases that match index
+  location <- data$location[1] #saves first row from location variable
+  source <- data$source[1]
+  n_tv    <- length(data$pro_minus_anti[data$ms_condition == 'tv']) #n for tv condition
+  n_ms    <- length(data$pro_minus_anti[data$ms_condition == 'ms']) #n for ms condition
+  sd_tv   <-     sd(data$pro_minus_anti[data$ms_condition == 'tv']) #sd for tv participants at that site
+  sd_ms   <-     sd(data$pro_minus_anti[data$ms_condition == 'ms']) #sd for ms participants at that site
+  mean_tv <-   mean(data$pro_minus_anti[data$ms_condition == 'tv']) #mean for tv participants at that site
+  mean_ms <-   mean(data$pro_minus_anti[data$ms_condition == 'ms']) #mean for ms participants at that site
+  expert <- mean(data$expert) #shortcut to indicate whether site is expert or not (0 = inhouse 1 = expert)
+  d_diff <- (mean_ms - mean_tv)/ sqrt((sd_ms^2+sd_tv^2)/2) #computes Cohen's D effect size
+  nhst <- t.test(data$pro_minus_anti~data$ms_condition)
+  t <- nhst$statistic
+  df <- nhst$parameter
+  p.value <- nhst$p.value
+  result <- data.frame(location, source, expert, n_tv, mean_tv, sd_tv, n_ms, mean_ms, sd_ms, d_diff, t, df, p.value) #results to be reported
+  result <- escalc(n1i = n_ms, n2i = n_tv, m1i = mean_ms, m2i = mean_tv, 
+                           sd1i = sd_ms, sd2i = sd_tv, data = result, measure = "SMD", 
+                           append = TRUE)
+  result$sei <- sqrt(result$vi)
+  return(result)
+}
+
+run.analysis <- function(data){
+  datl <- split(data, data$source)
+  res <- lapply(datl, analysis)
+  resm <- do.call(rbind, res)
+}
+```
+
+sitesource_label = case_when(source == "ufl" ~ "University of Florida",
+                                             source == "occid" ~ "Occidental College",
+                                             source == "ashland" ~ "Ashland University",
+                                             source == "ithaca" ~ "Ithaca College",
+                                             source == "riverside" ~ "University of California, Riverside",
+                                             source == "wesleyan_inhouse" ~ "Wesleyan University",
+                                             source == "uwmadison_expert" ~ "University of Wisconsin",
+                                             source == "uwmadison_inhouse" ~ "University of Wisconsin",
+                                             source == "vcu" ~ "Virginia Commonwealth University",
+                                             source == "sou_inhouse" ~ "Southern Oregon University",
+                                             source == "plu" ~ "Pacific Lutheran University",
+                                             source == "byui" ~ "Brigham Young University - Idaho",
+                                             source == "azusa" ~ "Azusa Pacific University",
+                                             source == "cnj" ~ "The College of New Jersey",
+                                             source == "wpi" ~ "Worcester Polytechnic Institute",
+                                             source == "illinois" ~ "University of Illinois",
+                                             source == "kansas_expert" ~ "University of Kansas",
+                                             source == "kansas_inhouse" ~ "University of Kansas",
+                                             source == "upenn" ~ "University of Pennsylvania",
+                                             source == "pace_inhouse" ~ "Pace University",
+                                             source == "pace_expert" ~ "Pace University")
+  )
+
+```{r data}
+merged <- readRDS("data/merged_deidentified_full.rds")
+
+# head(merged)
+nrow(merged)
+
+# table(merged$race)
+# sum(is.na(merged$race))
+# sum(is.na(merged$countryofbirth))
+
+levels(merged$countryofbirth)
+merged$usborn <- ifelse(merged$countryofbirth %in% c(1, "united states", "United State", "United States", "United States of America"
+                                                     , "us", "US", "usa", "USA", "U.S.A", "U.S."
+                                                     , "The United States of America."), 1, 0)
+
+levels(merged$race)
+merged$iswhite <- ifelse(merged$race %in% c(1, "White/Caucasian ", "White/Caucasian/Welsh,German,Italian", "white ", "Irish American "
+                                            , "1 AND 2", "1 AND 4 AND 5", "1 AND 6", "1,2", "1,2,4", "1,3", "1,3,4", "1,4", "1,4,5"
+                                            , "1,4,6", "1,5", "1,6", "white/ native american", "African American and White "
+                                            , "Caucasion & Hispanic/Latina", "Thai and Caucasian"), 1, 0)
+
+# Create variables, indexes, and exclusion rules ----
+# compute exclusion rules
+merged <- mutate(merged, 
+                 # Exclusion rule 1:
+                 #1. Wrote something for both writing prompts
+                 #2. Completed all six items evaluating the essay authors)
+                 pass_ER1 = !is.na(pro_minus_anti) & (msincomplete == 0 | is.na(msincomplete)) & # completed both prompts
+                   !is.na(prous3) & !is.na(prous4) & !is.na(prous5) &  # P provided all 3 ratings of pro-us essay
+                   !is.na(antius3) & !is.na(antius4) & !is.na(antius5),# P provided all 3 ratings of anti-us
+                 # Exclusion rule 2:
+                 # as above, plus
+                 #3. Identify as White (race == 1)
+                 #4. Born in USA (countryofbirth == 1)
+                 pass_ER2 = pass_ER1 &
+                   (iswhite == 1) & # white ps, NA race discarded
+                   (usborn == 1),
+                 # Exclusion rule 3:
+                 # as above, plus
+                 # 5. Score a 7 or higher on the American Identity item
+                 pass_ER3 = pass_ER2 &
+                   (americanid >= 7 & !is.na(americanid)) # strongly ID as american, NAs discarded
+)
+```
+
+## Exclusion Criteria
+
+Person-level exclusion (Taken from Klein et al., 2019):
+
+1. All participants who did not complete the materials.
+2. 1 + All participants who do not identify as white and who were born outside of the United States.
+3. 2 + All participants who responded lower than 7 on an American Identity item.
+
+Study-level exclusion based on $N$ (from the preregistration):
+
+1. No study-level exclusion.
+2. All studies that have less than 60 participants collected.
+3. All studies that habe less than 40 participants per cell.
+
+Study-level exclusion based on expert advise (from the comment):
+
+1. No exclusion based on expert advise.
+2. In-house studies are excluded.
+
+All exclusion criteria are crossed in the following way:
+
+```{r}
+person.ex <- 1:3
+n.ex <- 1:3
+expert.ex <- 1:2
+
+crit <- expand.grid(person.ex, n.ex, expert.ex)
+nrow(crit)
+```
+
+
+## Original Analysis
+
+We aim at reanalyzing the key findings of Klein et al (2019) using the exclusion settings (1,1,1), (2,1,1), and (3,1,1).
+
+```{r data-111, fig.width=6, fig.height=4}
+merged.111 <- subset(merged, pass_ER1 == TRUE)
+nrow(merged.111)
+
+#write data
+write.csv2(merged.111, "data/reanalysis_111.csv", row.names = FALSE)
+metaset.111 <- run.analysis(merged.111)
+write.csv2(metaset.111, "data/metaset_111.csv", row.names = FALSE)
+```
+
+```{r data-211, fig.width=6, fig.height=4}
+merged.211 <- subset(merged, pass_ER2 == TRUE)
+nrow(merged.211)
+
+#write data
+write.csv2(merged.211, "data/reanalysis_211.csv", row.names = FALSE)
+metaset.211 <- run.analysis(merged.211)
+write.csv2(metaset.211, "data/metaset_211.csv", row.names = FALSE)
+```
+
+```{r data-311, fig.width=6, fig.height=4}
+merged.311 <- subset(merged, pass_ER3 == TRUE)
+nrow(merged.311)
+
+#write data
+write.csv2(merged.311, "data/reanalysis_311.csv", row.names = FALSE)
+metaset.311 <- run.analysis(merged.311)
+write.csv2(metaset.311, "data/metaset_311.csv", row.names = FALSE)
+```
+
+## Analysis for the Main Claim of the Comment
+
+We aim at reanalyzing the main claim of Chatard et al (2020) using the exclusion settings (1,3,2), (2,3,2), and (3,3,2). Note that the study-level exclusions are based on the number of participants for exclusion criterion 1.
+
+```{r data-132}
+nbysourcebycond <- with(merged.111, tapply(dv_order, list(source, ms_condition), length))
+include3 <- names(which(rowSums(nbysourcebycond >= 40) ==2))
+
+merged.132 <- subset(merged.111, source %in% include3 & expert == 1)
+nrow(merged.132)
+
+write.csv2(merged.132, "data/reanalysis_132.csv", row.names = FALSE)
+metaset.132 <- run.analysis(merged.132)
+write.csv2(metaset.132, "data/metaset_132.csv", row.names = FALSE)
+```
+
+```{r data-232}
+merged.232 <- subset(merged.211, source %in% include3 & expert == 1)
+nrow(merged.232)
+
+write.csv2(merged.232, "data/reanalysis_232.csv", row.names = FALSE)
+metaset.232 <- run.analysis(merged.232)
+write.csv2(metaset.232, "data/metaset_232.csv", row.names = FALSE)
+```
+
+```{r data-332}
+merged.332 <- subset(merged.311, source %in% include3 & expert == 1)
+nrow(merged.332)
+
+write.csv2(merged.332, "data/reanalysis_332.csv", row.names = FALSE)
+metaset.332 <- run.analysis(merged.332)
+write.csv2(metaset.332, "data/metaset_332.csv", row.names = FALSE)
+```
+
+```{r check-meta}
+metafor::rma(metaset.332$d_diff, sei = metaset.332$sei, method="FE")
+```
+
+## All Other Variants
+
+### Exclusion .1.2
+
+```{r data-112}
+merged.112 <- subset(merged.111, expert == 1)
+nrow(merged.112)
+
+write.csv2(merged.112, "data/reanalysis_112.csv", row.names = FALSE)
+metaset.112 <- run.analysis(merged.112)
+write.csv2(metaset.112, "data/metaset_112.csv", row.names = FALSE)
+```
+
+```{r data-212}
+merged.212 <- subset(merged.211, expert == 1)
+nrow(merged.212)
+
+write.csv2(merged.212, "data/reanalysis_212.csv", row.names = FALSE)
+metaset.212 <- run.analysis(merged.212)
+write.csv2(metaset.212, "data/metaset_212.csv", row.names = FALSE)
+```
+
+```{r data-312}
+merged.312 <- subset(merged.311, expert == 1)
+nrow(merged.312)
+
+write.csv2(merged.312, "data/reanalysis_312.csv", row.names = FALSE)
+metaset.312 <- run.analysis(merged.312)
+write.csv2(metaset.312, "data/metaset_312.csv", row.names = FALSE)
+```
+
+### Exclusion .2.1
+
+```{r data-121}
+nbysource <- with(merged.111, tapply(dv_order, source, length))
+include2 <- names(which(nbysource > 60))
+
+merged.121 <- subset(merged.111, source %in% include2)
+nrow(merged.121)
+
+write.csv2(merged.121, "data/reanalysis_121.csv", row.names = FALSE)
+metaset.121 <- run.analysis(merged.121)
+write.csv2(merged.121, "data/metaset_121.csv", row.names = FALSE)
+```
+
+```{r data-221}
+merged.221 <- subset(merged.211, source %in% include2)
+nrow(merged.212)
+
+write.csv2(merged.221, "data/reanalysis_221.csv", row.names = FALSE)
+metaset.221 <- run.analysis(merged.221)
+write.csv2(merged.221, "data/metaset_221.csv", row.names = FALSE)
+```
+
+```{r data-321}
+merged.321 <- subset(merged.311, source %in% include2)
+nrow(merged.321)
+
+write.csv2(merged.321, "data/reanalysis_321.csv", row.names = FALSE)
+metaset.321 <- run.analysis(merged.321)
+write.csv2(metaset.321, "data/metaset_321.csv", row.names = FALSE)
+```
+
+### Exclusion .2.2
+
+```{r data-122}
+merged.122 <- subset(merged.111, source %in% include2 & expert == 1)
+nrow(merged.122)
+
+write.csv2(merged.122, "data/reanalysis_122.csv", row.names = FALSE)
+metaset.122 <- run.analysis(merged.122)
+write.csv2(merged.122, "data/metaset_122.csv", row.names = FALSE)
+```
+
+```{r data-222}
+merged.222 <- subset(merged.211, source %in% include2 & expert == 1)
+nrow(merged.222)
+
+write.csv2(merged.222, "data/reanalysis_222.csv", row.names = FALSE)
+metaset.222 <- run.analysis(merged.222)
+write.csv2(merged.222, "data/metaset_222.csv", row.names = FALSE)
+```
+
+```{r data-322}
+merged.322 <- subset(merged.311, source %in% include2 & expert == 1)
+nrow(merged.322)
+
+write.csv2(merged.322, "data/reanalysis_322.csv", row.names = FALSE)
+metaset.322 <- run.analysis(merged.322)
+write.csv2(metaset.322, "data/metaset_322.csv", row.names = FALSE)
+```
+
+### Exclusion .3.1
+
+
+```{r data-131}
+merged.131 <- subset(merged.111, source %in% include3)
+nrow(merged.131)
+
+write.csv2(merged.131, "data/reanalysis_131.csv", row.names = FALSE)
+merged.131 <- run.analysis(merged.131)
+write.csv2(metaset.132, "data/metaset_131.csv", row.names = FALSE)
+```
+
+```{r data-231}
+merged.231 <- subset(merged.211, source %in% include3)
+nrow(merged.231)
+
+write.csv2(merged.231, "data/reanalysis_231.csv", row.names = FALSE)
+metaset.231 <- run.analysis(merged.231)
+write.csv2(metaset.231, "data/metaset_231.csv", row.names = FALSE)
+```
+
+```{r data-331}
+merged.331 <- subset(merged.311, source %in% include3 & expert == 1)
+nrow(merged.331)
+
+write.csv2(merged.331, "data/reanalysis_331.csv", row.names = FALSE)
+metaset.331 <- run.analysis(merged.331)
+write.csv2(metaset.331, "data/metaset_331.csv", row.names = FALSE)
+```
