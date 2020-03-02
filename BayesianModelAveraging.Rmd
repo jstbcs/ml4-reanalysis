@@ -1,0 +1,41 @@
+---
+title: "Bayesian Model Averaging Meta Analysis"
+author: "Sophie Berkhout"
+date: "3/2/2020"
+output: pdf_document
+---
+
+```{r}
+metasets <- list(m111 = metaset.111,
+                 m211 = metaset.211,
+                 m311 = metaset.311,
+                 m132 = metaset.132,
+                 m232 = metaset.232,
+                 m332 = metaset.332,
+                 m112 = metaset.112,
+                 m212 = metaset.212,
+                 m312 = metaset.312,
+                 m121 = metaset.121,
+                 m221 = metaset.221,
+                 m321 = metaset.321,
+                 m122 = metaset.122,
+                 m222 = metaset.222,
+                 m322 = metaset.322,
+                 m131 = metaset.131,
+                 m231 = metaset.231,
+                 m331 = metaset.331)
+```
+
+```{r}
+m <- metaBMA::meta_bma(metasets[[1]]$yi, metasets[[1]]$sei)
+m$inclusion
+
+# for(i in 1:18){
+#   metaBMA::meta_bma(metasets[[i]])
+# }
+
+# model averaged BF mu and tau
+# three priors
+# forest plot for main analyses?
+
+```
