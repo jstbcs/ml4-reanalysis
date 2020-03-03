@@ -318,8 +318,8 @@ merged.131 <- subset(merged.111, source %in% include3)
 nrow(merged.131)
 
 write.csv2(merged.131, "data/reanalysis_131.csv", row.names = FALSE)
-merged.131 <- run.analysis(merged.131)
-write.csv2(metaset.132, "data/metaset_131.csv", row.names = FALSE)
+metaset.131 <- run.analysis(merged.131)
+write.csv2(metaset.131, "data/metaset_131.csv", row.names = FALSE)
 ```
 
 ```{r data-231}
