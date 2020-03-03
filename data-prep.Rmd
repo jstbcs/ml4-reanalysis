@@ -185,7 +185,7 @@ write.csv2(metaset.311, "data/metaset_311.csv", row.names = FALSE)
 We aim at reanalyzing the main claim of Chatard et al (2020) using the exclusion settings (1,3,2), (2,3,2), and (3,3,2). Note that the study-level exclusions are based on the number of participants for exclusion criterion 1.
 
 ```{r data-132}
-nbysourcebycond <- with(merged.111, tapply(dv_order, list(source, ms_condition), length))
+nbysourcebycond <- with(merged, tapply(dv_order, list(source, ms_condition), length))
 include3 <- names(which(rowSums(nbysourcebycond >= 40) ==2))
 
 merged.132 <- subset(merged.111, source %in% include3 & expert == 1)
@@ -252,7 +252,7 @@ write.csv2(metaset.312, "data/metaset_312.csv", row.names = FALSE)
 ### Exclusion .2.1
 
 ```{r data-121}
-nbysource <- with(merged.111, tapply(dv_order, source, length))
+nbysource <- with(merged, tapply(dv_order, source, length))
 include2 <- names(which(nbysource > 60))
 
 merged.121 <- subset(merged.111, source %in% include2)
@@ -311,7 +311,6 @@ write.csv2(metaset.322, "data/metaset_322.csv", row.names = FALSE)
 ```
 
 ### Exclusion .3.1
-
 
 ```{r data-131}
 merged.131 <- subset(merged.111, source %in% include3)
