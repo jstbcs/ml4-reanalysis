@@ -83,7 +83,7 @@ nrow(merged)
 levels(merged$countryofbirth)
 merged$usborn <- ifelse(merged$countryofbirth %in% c(1, "united states", "United State", "United States", "United States of America"
                                                      , "us", "US", "usa", "USA", "U.S.A", "U.S."
-                                                     , "The United States of America."), 1, 0)
+                                                     , "The United States of America.", "America"), 1, 0)
 
 levels(merged$race)
 merged$iswhite <- ifelse(merged$race %in% c(1, "White/Caucasian ", "White/Caucasian/Welsh,German,Italian", "white ", "Irish American "
@@ -215,7 +215,7 @@ write.csv2(metaset.332, "data/metaset_332.csv", row.names = FALSE)
 ```
 
 ```{r check-meta}
-metafor::rma(metaset.332$d_diff, sei = metaset.332$sei, method="FE")
+metafor::rma(metaset.332$yi, sei = metaset.332$sei, method="FE")
 ```
 
 ## All Other Variants
