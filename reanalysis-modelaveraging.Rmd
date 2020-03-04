@@ -1,0 +1,223 @@
+---
+title: "Bayesian Model Averaging Meta Analysis"
+author: "Sophie Berkhout"
+date: "3/2/2020"
+output: pdf_document
+---
+
+```{r, message = FALSE, warning = FALSE}
+library(metaBMA)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(papaja)
+
+ggplot2::theme_set(theme_apa(base_size = 10))
+```
+
+
+```{r}
+default.prior     <- prior(family = "t",
+                           param = c(0, 0.707, 1)
+                           )
+
+oosterwijk.prior  <- prior(family = "t",
+                           param = c(0.35, 0.102, 3)
+                           )
+
+vohs.prior        <- prior(family = "norm",
+                           param = c(0.3, 0.15)
+                           )
+
+priors <- list(default = default.prior,
+               oosterwijk = oosterwijk.prior,
+               vohs = vohs.prior
+               )
+
+# lower truncate priors at zero?
+``` 
+
+```{r}
+.bmaCalculateBFHeterogeneity <- function(prior_models, posterior_models){
+# Returns the heterogeneity Bayes factor
+  
+  postOdds <- (posterior_models["random_H0"] + posterior_models["random_H1"]) / 
+              (posterior_models["fixed_H0"] + posterior_models["fixed_H1"])
+  priorOdds <- (prior_models[3] + prior_models[4]) / (prior_models[1] + prior_models[2])
+  BFheterogeneity <- postOdds/priorOdds
+  return(BFheterogeneity)
+}
+
+# BFrf or BFfr?
+```
+
+```{r}
+.runRema <- function(y, SE, priors, extrainfo = FALSE){
+# Returns a list containing:
+# BFmu: dataframe with 1 row/3columns (BF per prior)
+# BFtau: dataframe with 1 row/3columns (BF per prior)
+# est: list containing 3 dataframes per prior 
+#      with effect size and 95% credible interval estimates
+  
+  BFmu <- BFtau <- data.frame(default = 0,
+                              oosterwijk = 0,
+                              vohs = 0
+                              )
+  
+  empty.dataframe <- data.frame(est.es = numeric(), 
+                                est.lower = numeric(),
+                                est.upper = numeric()
+                                )
+  
+  est <- list(default = empty.dataframe,
+              oosterwijk = empty.dataframe,
+              vohs = empty.dataframe
+              )
+  
+  for(i in 1:length(priors)){
+    rema <- meta_bma(y, SE, d = priors[[i]])
+    BFmu[, i] <- 1/rema$inclusion$incl.BF # BF in favour of the null model
+    if(extrainfo){
+      BFtau[i] <- .bmaCalculateBFHeterogeneity(rema$prior_models, rema$posterior_models)
+      est.es <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[3:(length(y) + 2), "mean"]
+      est.lower <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[3:(length(y) + 2), "2.5%"]
+      est.upper <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[3:(length(y) + 2), "97.5%"]
+      est[[i]] <- rbind(est[[i]], cbind(est.es, est.lower, est.upper))
+    }
+  }
+  if(!extrainfo){
+    return(BFmu)
+  } else {
+    remaResult <- list(BFmu = BFmu,
+                       BFtau = BFtau,
+                       est = est
+                       )
+    return(remaResult)
+  }
+}
+``` 
+
+```{r}
+remaForest <- function(obs.data, est.data){
+# Returns a forest plot with observed and estimated effects
+  
+I <- nrow(obs.data)
+ord <- order(obs.data$yi)
+es <- obs.data$yi[ord]
+est.es <- est.data[ord, "est.es"]
+est.lower <- est.data[ord, "est.lower"]
+est.upper <- est.data[ord, "est.upper"]
+studyLabels <- obs.data[ord, "source"]  
+
+lower <- es - qnorm(1.95/2) * obs.data$sei 
+upper <- es + qnorm(1.95/2) * obs.data$sei
+
+y.obs <- I:1
+y.est <- rev(seq(.6, I - .4, 1))
+
+dfBoth <- data.frame(es = c(es, est.es),
+                     y = c(y.obs, y.est),
+                     studyLabels = c(studyLabels, studyLabels),
+                     lower = c(lower, est.lower), upper = c(upper, est.upper),
+                     g = rep(c("Observed", "Estimated"), each = I)
+                     )
+
+
+plot <- ggplot(dfBoth, aes(x = es, y = y)) +
+        geom_vline(xintercept = 0, linetype = "dotted") +
+        geom_point(aes(shape = as.factor(dfBoth$g), colour = as.factor(dfBoth$g))) +
+        geom_errorbarh(aes(xmin = dfBoth$lower, xmax = dfBoth$upper, colour = as.factor(dfBoth$g)),
+                        height = .1, show.legend = FALSE) +
+        scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
+                                    expand = c(0, 0.5)) +
+        scale_color_manual("", values = c("black", "slategrey"), 
+                                    labels = c(gettext("Estimated"), gettext("Observed"))) +
+        scale_shape_manual("", values = c(16, 15)) +
+        guides(shape = guide_legend(reverse=TRUE, override.aes = list(size=3)), 
+               colour = guide_legend(reverse=TRUE))  +
+        xlab("Mortality Salience Effect") +
+        ylab(" ")
+
+return(plot)
+}
+```
+
+## Original Analysis
+```{r cache = T, message=F, warning=F}
+m.111 <- read.csv2("data/metaset_111.csv", header = T)
+m.211 <- read.csv2("data/metaset_211.csv", header = T)
+m.311 <- read.csv2("data/metaset_311.csv", header = T)
+
+rema.111 <- .runRema(m.111$yi, m.111$sei, priors, TRUE)
+rema.211 <- .runRema(m.211$yi, m.211$sei, priors, TRUE)
+rema.311 <- .runRema(m.311$yi, m.311$sei, priors, TRUE)
+
+remaForest(m.111, rema.111$est$default) + ggtitle("Exlusion Criterion 111")
+remaForest(m.211, rema.211$est$default) + ggtitle("Exlusion Criterion 211")
+remaForest(m.311, rema.311$est$default) + ggtitle("Exlusion Criterion 311")
+```
+
+```{r}
+BFs.og <- cbind(rbind(rema.111$BFmu, rema.211$BFmu, rema.311$BFmu),
+                rbind(rema.111$BFtau, rema.211$BFtau, rema.311$BFtau))
+BFs.og <- round(BFs.og, 2)
+rownames(BFs.og) <- paste("Exclusion Criterion", c(111, 211, 311))
+subhead <- rep(c("Default", "Oosterwijk", "Vohs"), 2)
+colnames(BFs.og) <- subhead
+colhead <- list("Effect Size BF" = c(2, 4),
+                "Heterogeneity BF" = c(5, 7))
+
+apa_table(BFs.og, escape = FALSE, caption = "Bayes factors for key analyses.", 
+          note = "All Bayes factors are reported in favor of the null model.",
+          col_spanners = colhead)
+```
+
+## Analysis for the Main Claim of the Comment
+```{r cache = T, message=F, warning=F}
+m.132 <- read.csv2("data/metaset_132.csv", header = T)
+m.232 <- read.csv2("data/metaset_232.csv", header = T)
+m.332 <- read.csv2("data/metaset_332.csv", header = T)
+
+rema.132 <- .runRema(m.132$yi, m.132$sei, priors, TRUE)
+rema.232 <- .runRema(m.232$yi, m.232$sei, priors, TRUE)
+rema.332 <- .runRema(m.332$yi, m.332$sei, priors, TRUE)
+
+remaForest(m.132, rema.132$est$default) + ggtitle("Exlusion Criterion 132")
+remaForest(m.232, rema.232$est$default) + ggtitle("Exlusion Criterion 232")
+remaForest(m.332, rema.332$est$default) + ggtitle("Exlusion Criterion 332")
+```
+
+```{r}
+BFs.cmnt <- cbind(rbind(rema.132$BFmu, rema.232$BFmu, rema.332$BFmu),
+                  rbind(rema.132$BFtau, rema.232$BFtau, rema.332$BFtau))
+BFs.cmnt <- round(BFs.cmnt, 2)
+rownames(BFs.cmnt) <- paste("Exclusion Criterion", c(132, 232, 332))
+colnames(BFs.cmnt) <- subhead
+
+apa_table(BFs.cmnt, escape = FALSE, caption = "Bayes factors for comment analyses.", 
+          col_spanners = colhead)
+```
+
+## All Other Variants
+```{r cache = T, message=F, warning=F}
+sets <- c(112, 212, 312, 121, 221, 321, 122, 222, 322, 131, 231, 331)
+rema.other <- data.frame(metaset = character(),
+                         default = numeric(),
+                         oosterwijk = numeric(),
+                         vohs = numeric()
+                         )
+for(i in sets){
+  path.m <- paste0("data/metaset_", i, ".csv")
+  m <- read.csv2(path.m, header = T)
+  rema <- .runRema(m$yi, m$sei, priors, FALSE)
+  rema.other <- rbind(rema.other, cbind(rema))
+}
+```
+
+```{r}
+rema.other <- round(rema.other, 2)
+rownames(rema.other) <- paste("Exclusion Criterion", sets)
+colnames(rema.other) <- c("Default", "Oosterwijk", "Vohs")
+
+apa_table(rema.other, escape = FALSE, caption = "Bayes factors for alll other analyses.")
+```
