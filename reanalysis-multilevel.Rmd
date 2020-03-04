@@ -72,7 +72,11 @@ bayesBF <- function(dat, rScale = c(1, .4, .24), M = 30000, Mprior = 200000)
 	        , exp(bfFull - bfNull) * post.pos/prior.pos)
 	out <- c(bf, post.pos, prior.pos)
 	names(out) <- c("F0", "10", "P0", "post.pos", "prior.pos")
-	return(list("bfs" = out, "effects" = effect, "N" = nrow(dat)))
+	
+	effsize <- samples[500:M, mu + 1]/sqrt(samples[500:M, 2 * J + 3])
+	effsizeCI <- quantile(effsize, probs = c(.025, .975))
+	
+	return(list("bfs" = out, "effects" = effect, "N" = nrow(dat), "ES" = mean(effsize), "CI" = effsizeCI))
 }
 
 simple.fig <- function(dat){
@@ -141,18 +145,24 @@ dat.311 <- read.csv2("data/reanalysis_311.csv", header = T)
 ```{r reanalysis-111, cache = T, message=F, warning=F}
 rean.111 <- bayesBF(dat = dat.111)
 rean.111$bfs
+rean.111$ES
+rean.111$CI
 resFig(rean.111$effects, dat = dat.111)
 ```
 
 ```{r reanalysis-211, cache = T, message=F, warning=F}
 rean.211 <- bayesBF(dat = dat.211)
 rean.211$bfs
+rean.211$ES
+rean.211$CI
 resFig(rean.211$effects, dat = dat.211)
 ```
 
 ```{r reanalysis-311, cache = T, message=F, warning=F}
 rean.311 <- bayesBF(dat = dat.311)
 rean.311$bfs
+rean.311$ES
+rean.311$CI
 resFig(rean.311$effects, dat = dat.311)
 ```
 
@@ -169,18 +179,24 @@ dat.332 <- read.csv2("data/reanalysis_332.csv", header = T)
 ```{r reanalysis-132, cache = T, message=F, warning=F}
 rean.132 <- bayesBF(dat = dat.132)
 rean.132$bfs
+rean.132$ES
+rean.132$CI
 resFig(rean.132$effects, dat = dat.132)
 ```
 
 ```{r reanalysis-232, cache = T, message=F, warning=F}
 rean.232 <- bayesBF(dat = dat.232)
 rean.232$bfs
+rean.232$ES
+rean.232$CI
 resFig(rean.232$effects, dat = dat.232)
 ```
 
 ```{r reanalysis-332, cache = T, message=F, warning=F}
 rean.332 <- bayesBF(dat = dat.332)
 rean.332$bfs
+rean.332$ES
+rean.332$CI
 resFig(rean.332$effects, dat = dat.332)
 ```
 
