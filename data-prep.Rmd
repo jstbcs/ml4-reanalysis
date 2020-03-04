@@ -260,7 +260,7 @@ nrow(merged.121)
 
 write.csv2(merged.121, "data/reanalysis_121.csv", row.names = FALSE)
 metaset.121 <- run.analysis(merged.121)
-write.csv2(merged.121, "data/metaset_121.csv", row.names = FALSE)
+write.csv2(metaset.121, "data/metaset_121.csv", row.names = FALSE)
 ```
 
 ```{r data-221}
@@ -269,7 +269,7 @@ nrow(merged.212)
 
 write.csv2(merged.221, "data/reanalysis_221.csv", row.names = FALSE)
 metaset.221 <- run.analysis(merged.221)
-write.csv2(merged.221, "data/metaset_221.csv", row.names = FALSE)
+write.csv2(metaset.221, "data/metaset_221.csv", row.names = FALSE)
 ```
 
 ```{r data-321}
@@ -289,7 +289,7 @@ nrow(merged.122)
 
 write.csv2(merged.122, "data/reanalysis_122.csv", row.names = FALSE)
 metaset.122 <- run.analysis(merged.122)
-write.csv2(merged.122, "data/metaset_122.csv", row.names = FALSE)
+write.csv2(metaset.122, "data/metaset_122.csv", row.names = FALSE)
 ```
 
 ```{r data-222}
@@ -298,7 +298,7 @@ nrow(merged.222)
 
 write.csv2(merged.222, "data/reanalysis_222.csv", row.names = FALSE)
 metaset.222 <- run.analysis(merged.222)
-write.csv2(merged.222, "data/metaset_222.csv", row.names = FALSE)
+write.csv2(metaset.222, "data/metaset_222.csv", row.names = FALSE)
 ```
 
 ```{r data-322}
