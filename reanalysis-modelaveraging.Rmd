@@ -11,6 +11,7 @@ library(ggplot2)
 library(knitr)
 library(kableExtra)
 library(papaja)
+library(lemon)
 
 ggplot2::theme_set(theme_apa(base_size = 10))
 ```
@@ -136,7 +137,9 @@ plot <- ggplot(dfBoth, aes(x = es, y = y)) +
         guides(shape = guide_legend(reverse=TRUE, override.aes = list(size=3)), 
                colour = guide_legend(reverse=TRUE))  +
         xlab("Mortality Salience Effect") +
-        ylab(" ")
+        ylab(" ") +
+        theme(axis.line.y = element_blank(),
+              axis.ticks.y = element_blank())
 
 return(plot)
 }
@@ -167,7 +170,7 @@ colnames(BFs.og) <- subhead
 colhead <- list("Effect Size BF" = c(2, 4),
                 "Heterogeneity BF" = c(5, 7))
 
-apa_table(BFs.og, escape = FALSE, caption = "Bayes factors for key analyses.", 
+apa_table(BFs.og, escape = FALSE, caption = "Model-averaged Bayes factors for key analyses.", 
           note = "All Bayes factors are reported in favor of the null model.",
           col_spanners = colhead)
 ```
@@ -194,7 +197,7 @@ BFs.cmnt <- round(BFs.cmnt, 2)
 rownames(BFs.cmnt) <- paste("Exclusion Criterion", c(132, 232, 332))
 colnames(BFs.cmnt) <- subhead
 
-apa_table(BFs.cmnt, escape = FALSE, caption = "Bayes factors for comment analyses.", 
+apa_table(BFs.cmnt, escape = FALSE, caption = "Model-averaged Bayes factors for comment analyses.", 
           col_spanners = colhead)
 ```
 
@@ -219,5 +222,57 @@ rema.other <- round(rema.other, 2)
 rownames(rema.other) <- paste("Exclusion Criterion", sets)
 colnames(rema.other) <- c("Default", "Oosterwijk", "Vohs")
 
-apa_table(rema.other, escape = FALSE, caption = "Bayes factors for alll other analyses.")
+apa_table(rema.other, escape = FALSE, caption = "Model-averaged Bayes factors for all other analyses.")
 ```
+
+## Combining Evidence
+
+```{r cache = T, message=F, warning=F}
+sets <- c(111, 211, 311, 132, 232, 332, 112, 212, 312, 121, 221, 321, 122, 222, 322, 131, 231, 331)
+ssize <- data.frame("metaset" = character(),
+                         "n.study" = numeric()
+                         )
+for(i in sets){
+  path.m <- paste0("data/reanalysis_", i, ".csv")
+  m <- read.csv2(path.m, header = T)
+  N <- nrow(m)
+  ssize <- rbind(ssize, c(i, N))
+}
+```
+
+
+```{r}
+rema.all <- rbind(BFs.og[, 1:3]
+                  , BFs.cmnt[, 1:3]
+                  , rema.other
+                  )
+rema.all <- cbind(rema.all, "N" = ssize[, 2])
+rema.all <- cbind(rema.all, "Crit" = rownames(rema.all))
+result <- tidyr::gather(rema.all, prior, bf, Default:Vohs, factor_key = TRUE)
+result$Nscaled <- result$N/mean(result$N) * 3
+
+xrange <- c(0, 2500)
+yrange <- c(1/50, 50) # log scale
+
+# Plot with n participants included on the x-axis, BF01 on the y-axis, colors for
+# participant exclusion sets and bubble sizes for number of studies included
+ggplot(aes(x = N, y = bf, size = Nscaled, color = as.factor(prior)), data = result) +
+  geom_jitter(alpha = 0.6, width = 15) +
+  scale_y_continuous(trans='log', limits = yrange, breaks = c(1/50, 1/5, 1, 5, 50)) +
+  scale_size_identity() +
+  scale_colour_brewer(palette = 'Dark2') +
+  labs(x = 'Sample Size', y = expression(BF["01"]), color = "Priors") +
+  xlim(xrange) +
+  geom_hline(yintercept = 1) + 
+  theme_apa() +
+  theme_classic(base_size = 19) +
+  theme(axis.line=element_line()) +
+  coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
+  theme(axis.title.x = element_text(vjust=-0.5),
+        axis.text.x = element_text(vjust=-0.5),
+        axis.text.y = element_text(hjust=.8,),
+        axis.ticks.length = unit(0.25, 'cm'),
+        
+        )
+```
+
