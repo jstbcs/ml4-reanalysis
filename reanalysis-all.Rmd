@@ -1,0 +1,186 @@
+---
+title: "Reanalysis"
+author: "Julia Haaf"
+date: "3/5/2020"
+output: pdf_document
+---
+
+```{r}
+library(ggpubr)
+library(metaBMA)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(papaja)
+library(lemon)
+
+ggplot2::theme_set(theme_apa(base_size = 12))
+```
+
+```{r re-fig-all, echo = F}
+forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
+# Returns a forest plot with observed and estimated effects
+  
+  I <- nrow(es.data)
+  ord <- order(es.data$yi) #everything is sorted by effect size
+  es <- es.data$yi[ord]
+  est.es <- est.averaging[ord, "est.es"]
+  est.lower.es <- est.averaging[ord, "est.lower"]
+  est.upper.es <- est.averaging[ord, "est.upper"]
+  studyLabels <- es.data[ord, "labelpretty"]  
+
+  lower.es <- es - qnorm(1 - .05/2) * es.data$sei 
+  upper.es <- es + qnorm(1 - .05/2) * es.data$sei
+
+  y.obs.es <- I:1
+  y.est.es <- rev(seq(.6, I - .4, 1))
+
+  dfBoth.av <- data.frame(es = c(es, est.es),
+                       y = c(y.obs.es, y.est.es),
+                       studyLabels = c(studyLabels, studyLabels),
+                       lower = c(lower.es, est.lower.es), upper = c(upper.es, est.upper.es),
+                       g = rep(c("Observed", "Estimated"), each = I)
+                       )
+  
+  obs.data$sourcef <- factor(obs.data$source, levels = unique(obs.data$source))
+  meansbycondloc <- with(obs.data, tapply(pro_minus_anti, list(sourcef, ms_condition), mean, na.rm = TRUE))
+  obs.effects <- meansbycondloc[, 1] - meansbycondloc[, 2]
+  obs.ci <- t(sapply(unique(obs.data$source)
+                          , function(x) t.test(obs.data$pro_minus_anti[obs.data$source==x] ~ obs.data$ms_condition[obs.data$source==x]
+                                               , var.equal = T)$conf.int))
+  pm.effects <- colMeans(est.multilevel) 
+  est.ci <- t(apply(est.multilevel, 2, quantile, probs = c(.025, .975)))
+
+  dfBoth.mu <- data.frame(effectSize = c(obs.effects[ord], pm.effects[ord]),
+                     y = c(y.obs.es, y.est.es),
+                     studyLabels = c(studyLabels, studyLabels),
+                     lower = c(obs.ci[ord, 1], est.ci[ord, 1]), 
+                     upper = c(obs.ci[ord, 2], est.ci[ord, 2]),
+                     g = rep(c("Observed", "Estimated"), each = I))
+    
+  plot.mu <-  ggplot2::ggplot(dfBoth.mu, ggplot2::aes(x = effectSize, y = y)) +
+           ggplot2::geom_vline(xintercept = 0, linetype = "dotted") +
+           ggplot2::geom_point(ggplot2::aes(shape = as.factor(dfBoth.mu$g), colour = as.factor(dfBoth.mu$g))) +
+           ggplot2::geom_errorbarh(ggplot2::aes(xmin = dfBoth.mu$lower
+                                               , xmax = dfBoth.mu$upper, colour = as.factor(dfBoth.mu$g))
+                                  , height = .1, show.legend = FALSE) +
+           ggplot2::scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
+                                    expand = c(0, 0.5)) +
+           ggplot2::scale_color_manual("", values = c("black", "slategrey"), labels = c("Estimated", "Observed")) +
+           ggplot2::scale_shape_manual("", values = c(16, 15)) +
+           ggplot2::guides(shape = ggplot2::guide_legend(reverse=TRUE, override.aes = list(size=3))
+                           , colour = ggplot2::guide_legend(reverse=TRUE)) +
+           ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(c("slategrey", "black"), each = I)))) +
+           ggplot2::xlab("Unstandardized Effect") +
+           ggplot2::ylab(" ") +
+           theme(axis.line.y = element_blank(),
+                 axis.ticks.y = element_blank(),
+                 legend.position = "none")
+
+  plot.av <- ggplot(dfBoth.av, aes(x = es, y = y)) +
+        geom_vline(xintercept = 0, linetype = "dotted") +
+        geom_point(aes(shape = as.factor(dfBoth.av$g), colour = as.factor(dfBoth.av$g))) +
+        geom_errorbarh(aes(xmin = dfBoth.av$lower, xmax = dfBoth.av$upper, colour = as.factor(dfBoth.av$g)),
+                        height = .1, show.legend = FALSE) +
+        scale_y_continuous(breaks = I:1, labels = rep(" ", I),
+                                    expand = c(0, 0.5)) +
+        scale_color_manual("", values = c("black", "slategrey"), 
+                                    labels = c(gettext("Estimated"), gettext("Observed"))) +
+        scale_shape_manual("", values = c(16, 15)) +
+        guides(shape = guide_legend(reverse=TRUE, override.aes = list(size=3)), 
+               colour = guide_legend(reverse=TRUE))  +
+        xlab("Standardized Effect") +
+        ylab(" ") +
+        theme(axis.line.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              legend.margin = margin(t = 0, unit='cm'),
+              legend.position = c(0.1, 0.15))
+
+  ggarrange(plot.mu, plot.av,
+            labels = c("A.", "B."),
+            ncol = 2, nrow = 2
+            , widths = c(.62, .38))
+}
+```
+
+
+
+This document combines all analyses to draw plots.
+
+## Running Analyses
+
+```{r include-hierarchical, cache = TRUE, child = "reanalysis-multilevel.Rmd"}
+```
+
+```{r include-averaging, cache = TRUE, child = "reanalysis-modelaveraging.Rmd"}
+```
+
+## Plots Original Analysis
+
+```{r}
+m.111$labelpretty <- c("Ashland University", "Azusa Pacific University", "Brigham Young University - Idaho", "The College of New Jersey", "University of Illinois", "Ithaca College", "University of Kansas - Expert", "University of Kansas - In House", "Occidental College", "Pace University - Expert", "Pace University - In House", "Pacific Lutheran University", "University of California, Riverside", "Southern Oregon University", "University of Florida", "University of Pennsylvania", "University of Wisconsin - Expert", "University of Wisconsin - In House", "Virginia Commonwealth University", "Wesleyan University", "Worcester Polytechnic Institute")
+```
+
+
+```{r forests-111, fig.width=8, fig.height=8}
+forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111$est$default, est.multilevel = rean.111$effects)
+```
+
+## Combining Evidence from multiverse analysis
+
+```{r cache = T, message=F, warning=F}
+sets <- c(111, 211, 311, 132, 232, 332, 112, 212, 312, 121, 221, 321, 122, 222, 322, 131, 231, 331)
+ssize <- data.frame("metaset" = character(),
+                    "N" = numeric(),
+                    "N.study" = numeric()
+                         )
+for(i in sets){
+  path.m <- paste0("data/reanalysis_", i, ".csv")
+  m <- read.csv2(path.m, header = T)
+  N <- nrow(m)
+  path.m <- paste0("data/metaset_", i, ".csv")
+  m <- read.csv2(path.m, header = T)
+  N.study <- nrow(m)
+  ssize <- rbind(ssize, c(i, N, N.study))
+}
+```
+
+
+```{r fig-all}
+rema.all <- rbind(BFs.og[, 1:3]
+                  , BFs.cmnt[, 1:3]
+                  , rema.other
+                  )
+rema.all <- 1/rema.all
+rema.all <- cbind(rema.all, "N" = ssize[, 2], "N.study" = ssize[, 3])
+rema.all <- cbind(rema.all, "Crit" = rownames(rema.all))
+result <- tidyr::gather(rema.all, prior, bf, Default:Vohs, factor_key = TRUE)
+result$Nscaled <- result$N.study/2
+
+result <- result[!duplicated(result$bf),]
+
+xrange <- c(0, 2500)
+yrange <- c(1/50, 50) # log scale
+
+# Plot with n participants included on the x-axis, BF01 on the y-axis, colors for
+# participant exclusion sets and bubble sizes for number of studies included
+ggplot(aes(x = N, y = bf, size = Nscaled, color = as.factor(prior)), data = result) +
+  geom_jitter(alpha = 0.6, width = 15) +
+  scale_y_continuous(trans='log', limits = yrange, breaks = c(1/50, 1/5, 1, 5, 50)) +
+  scale_size_identity() +
+  scale_colour_brewer(palette = 'Dark2') +
+  labs(x = 'Sample Size', y = expression(BF["10"]), color = "Priors") +
+  xlim(xrange) +
+  geom_hline(yintercept = 1) + 
+  theme_apa() +
+  theme_classic(base_size = 19) +
+  theme(axis.line=element_line()) +
+  guides(color = guide_legend(override.aes = list(size = 4))) +
+  coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
+  theme(axis.title.x = element_text(vjust=-0.5),
+        axis.text.x = element_text(vjust=-0.5),
+        axis.text.y = element_text(hjust=.8,),
+        axis.ticks.length = unit(0.25, 'cm')
+        )
+```
+

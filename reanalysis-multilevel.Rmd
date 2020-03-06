@@ -127,7 +127,9 @@ resFig <- function(effects, dat, names = FALSE){
                            , colour = ggplot2::guide_legend(reverse=TRUE)) +
            ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(c("slategrey", "black"), each = I)))) +
            ggplot2::xlab("Mortality Salience Effect") +
-           ggplot2::ylab(" ")
+           ggplot2::ylab(" ") +
+           theme(axis.line.y = element_blank(),
+                 axis.ticks.y = element_blank())
   plot
 }
 ```

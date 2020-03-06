@@ -13,21 +13,24 @@ library(kableExtra)
 library(papaja)
 library(lemon)
 
-ggplot2::theme_set(theme_apa(base_size = 10))
+ggplot2::theme_set(theme_apa(base_size = 12))
 ```
 
 
 ```{r}
 default.prior     <- prior(family = "t",
                            param = c(0, 0.707, 1)
+                           , lower = 0
                            )
 
 oosterwijk.prior  <- prior(family = "t",
                            param = c(0.35, 0.102, 3)
+                           , lower = 0
                            )
 
 vohs.prior        <- prior(family = "norm",
                            param = c(0.3, 0.15)
+                           , lower = 0
                            )
 
 priors <- list(default = default.prior,
@@ -76,7 +79,7 @@ priors <- list(default = default.prior,
               )
   
   for(i in 1:length(priors)){
-    rema <- meta_bma(y, SE, d = priors[[i]])
+    rema <- meta_bma(y, SE, d = priors[[i]], control = list(adapt_delta = 0.995))
     BFmu[, i] <- 1/rema$inclusion$incl.BF # BF in favour of the null model
     if(extrainfo){
       BFtau[i] <- .bmaCalculateBFHeterogeneity(rema$prior_models, rema$posterior_models)
@@ -223,56 +226,5 @@ rownames(rema.other) <- paste("Exclusion Criterion", sets)
 colnames(rema.other) <- c("Default", "Oosterwijk", "Vohs")
 
 apa_table(rema.other, escape = FALSE, caption = "Model-averaged Bayes factors for all other analyses.")
-```
-
-## Combining Evidence
-
-```{r cache = T, message=F, warning=F}
-sets <- c(111, 211, 311, 132, 232, 332, 112, 212, 312, 121, 221, 321, 122, 222, 322, 131, 231, 331)
-ssize <- data.frame("metaset" = character(),
-                         "n.study" = numeric()
-                         )
-for(i in sets){
-  path.m <- paste0("data/reanalysis_", i, ".csv")
-  m <- read.csv2(path.m, header = T)
-  N <- nrow(m)
-  ssize <- rbind(ssize, c(i, N))
-}
-```
-
-
-```{r}
-rema.all <- rbind(BFs.og[, 1:3]
-                  , BFs.cmnt[, 1:3]
-                  , rema.other
-                  )
-rema.all <- cbind(rema.all, "N" = ssize[, 2])
-rema.all <- cbind(rema.all, "Crit" = rownames(rema.all))
-result <- tidyr::gather(rema.all, prior, bf, Default:Vohs, factor_key = TRUE)
-result$Nscaled <- result$N/mean(result$N) * 3
-
-xrange <- c(0, 2500)
-yrange <- c(1/50, 50) # log scale
-
-# Plot with n participants included on the x-axis, BF01 on the y-axis, colors for
-# participant exclusion sets and bubble sizes for number of studies included
-ggplot(aes(x = N, y = bf, size = Nscaled, color = as.factor(prior)), data = result) +
-  geom_jitter(alpha = 0.6, width = 15) +
-  scale_y_continuous(trans='log', limits = yrange, breaks = c(1/50, 1/5, 1, 5, 50)) +
-  scale_size_identity() +
-  scale_colour_brewer(palette = 'Dark2') +
-  labs(x = 'Sample Size', y = expression(BF["01"]), color = "Priors") +
-  xlim(xrange) +
-  geom_hline(yintercept = 1) + 
-  theme_apa() +
-  theme_classic(base_size = 19) +
-  theme(axis.line=element_line()) +
-  coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
-  theme(axis.title.x = element_text(vjust=-0.5),
-        axis.text.x = element_text(vjust=-0.5),
-        axis.text.y = element_text(hjust=.8,),
-        axis.ticks.length = unit(0.25, 'cm'),
-        
-        )
 ```
 
