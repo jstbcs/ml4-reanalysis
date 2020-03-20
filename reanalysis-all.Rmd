@@ -14,7 +14,7 @@ library(kableExtra)
 library(papaja)
 library(lemon)
 
-ggplot2::theme_set(theme_apa(base_size = 12))
+ggplot2::theme_set(theme_apa(base_size = 14))
 ```
 
 ```{r re-fig-all, echo = F}
@@ -23,6 +23,7 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
   
   I <- nrow(es.data)
   ord <- order(es.data$yi) #everything is sorted by effect size
+  labord <- es.data$source[ord]
   es <- es.data$yi[ord]
   est.es <- est.averaging[ord, "est.es"]
   est.lower.es <- est.averaging[ord, "est.lower"]
@@ -50,20 +51,22 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
                                                , var.equal = T)$conf.int))
   pm.effects <- colMeans(est.multilevel) 
   est.ci <- t(apply(est.multilevel, 2, quantile, probs = c(.025, .975)))
+  lab.multiord <- unique(obs.data$source)
+  ordmulti <- match(labord, lab.multiord)
 
-  dfBoth.mu <- data.frame(effectSize = c(obs.effects[ord], pm.effects[ord]),
+  dfBoth.mu <- data.frame(effectSize = c(obs.effects[ordmulti], pm.effects[ordmulti]),
                      y = c(y.obs.es, y.est.es),
                      studyLabels = c(studyLabels, studyLabels),
-                     lower = c(obs.ci[ord, 1], est.ci[ord, 1]), 
-                     upper = c(obs.ci[ord, 2], est.ci[ord, 2]),
+                     lower = c(obs.ci[ordmulti, 1], est.ci[ordmulti, 1]), 
+                     upper = c(obs.ci[ordmulti, 2], est.ci[ordmulti, 2]),
                      g = rep(c("Observed", "Estimated"), each = I))
     
   plot.mu <-  ggplot2::ggplot(dfBoth.mu, ggplot2::aes(x = effectSize, y = y)) +
            ggplot2::geom_vline(xintercept = 0, linetype = "dotted") +
-           ggplot2::geom_point(ggplot2::aes(shape = as.factor(dfBoth.mu$g), colour = as.factor(dfBoth.mu$g))) +
+           ggplot2::geom_point(ggplot2::aes(shape = as.factor(dfBoth.mu$g), colour = as.factor(dfBoth.mu$g)), size = 3) +
            ggplot2::geom_errorbarh(ggplot2::aes(xmin = dfBoth.mu$lower
                                                , xmax = dfBoth.mu$upper, colour = as.factor(dfBoth.mu$g))
-                                  , height = .1, show.legend = FALSE) +
+                                  , height = .3, show.legend = FALSE, size = .8) +
            ggplot2::scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
                                     expand = c(0, 0.5)) +
            ggplot2::scale_color_manual("", values = c("black", "slategrey"), labels = c("Estimated", "Observed")) +
@@ -71,7 +74,7 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
            ggplot2::guides(shape = ggplot2::guide_legend(reverse=TRUE, override.aes = list(size=3))
                            , colour = ggplot2::guide_legend(reverse=TRUE)) +
            ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(c("slategrey", "black"), each = I)))) +
-           ggplot2::xlab("Unstandardized Effect") +
+           ggplot2::xlab("Unstandardized \n Effect") +
            ggplot2::ylab(" ") +
            theme(axis.line.y = element_blank(),
                  axis.ticks.y = element_blank(),
@@ -79,9 +82,9 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
 
   plot.av <- ggplot(dfBoth.av, aes(x = es, y = y)) +
         geom_vline(xintercept = 0, linetype = "dotted") +
-        geom_point(aes(shape = as.factor(dfBoth.av$g), colour = as.factor(dfBoth.av$g))) +
+        geom_point(aes(shape = as.factor(dfBoth.av$g), colour = as.factor(dfBoth.av$g)), size = 3) +
         geom_errorbarh(aes(xmin = dfBoth.av$lower, xmax = dfBoth.av$upper, colour = as.factor(dfBoth.av$g)),
-                        height = .1, show.legend = FALSE) +
+                        , height = .3, show.legend = FALSE, size = .8) +
         scale_y_continuous(breaks = I:1, labels = rep(" ", I),
                                     expand = c(0, 0.5)) +
         scale_color_manual("", values = c("black", "slategrey"), 
@@ -89,7 +92,7 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
         scale_shape_manual("", values = c(16, 15)) +
         guides(shape = guide_legend(reverse=TRUE, override.aes = list(size=3)), 
                colour = guide_legend(reverse=TRUE))  +
-        xlab("Standardized Effect") +
+        xlab("Standardized \n Effect") +
         ylab(" ") +
         theme(axis.line.y = element_blank(),
               axis.ticks.y = element_blank(),
@@ -118,13 +121,29 @@ This document combines all analyses to draw plots.
 ## Plots Original Analysis
 
 ```{r}
+m.111$source
 m.111$labelpretty <- c("Ashland University", "Azusa Pacific University", "Brigham Young University - Idaho", "The College of New Jersey", "University of Illinois", "Ithaca College", "University of Kansas - Expert", "University of Kansas - In House", "Occidental College", "Pace University - Expert", "Pace University - In House", "Pacific Lutheran University", "University of California, Riverside", "Southern Oregon University", "University of Florida", "University of Pennsylvania", "University of Wisconsin - Expert", "University of Wisconsin - In House", "Virginia Commonwealth University", "Wesleyan University", "Worcester Polytechnic Institute")
+
+m.211$source
+m.211$labelpretty <- c("Ashland University", "Azusa Pacific University", "Brigham Young University - Idaho", "The College of New Jersey", "Ithaca College", "University of Kansas - Expert", "Occidental College", "Pace University - Expert", "University of California, Riverside", "University of Pennsylvania", "University of Wisconsin - Expert", "Virginia Commonwealth University")
+
+m.311$source
+m.311$labelpretty <- c("Ashland University", "Brigham Young University - Idaho", "The College of New Jersey", "University of Kansas - Expert", "Occidental College", "Pace University - Expert", "University of California, Riverside", "University of Wisconsin - Expert", "Virginia Commonwealth University")
 ```
 
 
-```{r forests-111, fig.width=8, fig.height=8}
+```{r forests-111, fig.width=10, fig.height=14}
 forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111$est$default, est.multilevel = rean.111$effects)
 ```
+
+```{r forests-211, fig.width=10, fig.height=10}
+forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211$est$default, est.multilevel = rean.211$effects)
+```
+
+```{r forests-311, fig.width=10, fig.height=9}
+forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311$est$default, est.multilevel = rean.311$effects)
+```
+
 
 ## Combining Evidence from multiverse analysis
 
@@ -180,7 +199,79 @@ ggplot(aes(x = N, y = bf, size = Nscaled, color = as.factor(prior)), data = resu
   theme(axis.title.x = element_text(vjust=-0.5),
         axis.text.x = element_text(vjust=-0.5),
         axis.text.y = element_text(hjust=.8,),
-        axis.ticks.length = unit(0.25, 'cm')
+        axis.ticks.length = unit(0.25, 'cm'),
+        legend.position = c(0.8, .85)
         )
 ```
 
+```{r}
+crits <- data.frame(matrix(unlist(strsplit(as.character(sets), split = c())), ncol = 3, byrow = T))
+colnames(crits) <- c("Participant-level", "N-based", "Protocol")
+crits$`Participant-level` <- ifelse(crits$`Participant-level` == 1, "All"
+                                    , ifelse(crits$`Participant-level` == 2, "White & US-born", "US-Identity > 7"))
+crits$`N-based` <- ifelse(crits$`N-based` == 1, "All"
+                                    , ifelse(crits$`N-based` == 2, "N > 60", "N > 80"))
+crits$Protocol <- ifelse(crits$Protocol == 1, "All", "AA")
+
+tab.all <- cbind(crits, rema.all[, c("N", "N.study")])
+tab.all <- tab.all[order(tab.all$`N-based`), ]        
+tab.all <- tab.all[c(1:12, 16:18, 13:15),]
+
+apa_table(tab.all
+          , note = "Bla"
+          , caption = "Exclusion constellations and resulting sample sizes"
+          , col.names = c("Participant-level", "N-based", "Protocol", "Sample Size", "Number of Studies")
+          , row.names = F
+          , digits = 0)
+```
+
+
+## Additional Info
+
+Overall effect size estimates
+
+```{r}
+default.prior.unconstrained     <- prior(family = "t",
+                                         param = c(0, 0.707, 1)
+                                         )
+priors.es <- list(default = default.prior.unconstrained
+               )
+
+rema.111.es <- .runRema(m.111$yi, m.111$sei, priors.es, TRUE)
+rema.211.es <- .runRema(m.211$yi, m.211$sei, priors.es, TRUE)
+rema.311.es <- .runRema(m.311$yi, m.311$sei, priors.es, TRUE)
+```
+
+```{r}
+rema.132.es <- .runRema(m.132$yi, m.132$sei, priors.es, TRUE)
+rema.232.es <- .runRema(m.232$yi, m.232$sei, priors.es, TRUE)
+rema.332.es <- .runRema(m.332$yi, m.332$sei, priors.es, TRUE)
+```
+
+
+
+```{r, results="asis"}
+es.tab <- rbind(
+  rema.111.es$m.est[[1]]
+  , rema.211.es$m.est[[1]]
+  , rema.311.es$m.est[[1]]
+  , rema.132.es$m.est[[1]]
+  , rema.232.es$m.est[[1]]
+  , rema.332.es$m.est[[1]]
+)
+
+kable(round(es.tab, 2), col.names = c("ES", "2.5%", "95%"))
+```
+
+
+```{r forests-111-unconstrained, fig.width=10, fig.height=14}
+forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111.es$est$default, est.multilevel = rean.111$effects)
+```
+
+```{r forests-211-unconstrained, fig.width=10, fig.height=10}
+forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211.es$est$default, est.multilevel = rean.211$effects)
+```
+
+```{r forests-311-unconstrained, fig.width=10, fig.height=9}
+forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311.es$est$default, est.multilevel = rean.311$effects)
+```

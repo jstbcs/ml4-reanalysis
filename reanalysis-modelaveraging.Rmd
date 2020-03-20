@@ -78,6 +78,11 @@ priors <- list(default = default.prior,
               vohs = empty.dataframe
               )
   
+  m.est <- list(default = c(),
+              oosterwijk = c(),
+              vohs = c()
+              )
+  
   for(i in 1:length(priors)){
     rema <- meta_bma(y, SE, d = priors[[i]], control = list(adapt_delta = 0.995))
     BFmu[, i] <- 1/rema$inclusion$incl.BF # BF in favour of the null model
@@ -87,6 +92,10 @@ priors <- list(default = default.prior,
       est.lower <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[3:(length(y) + 2), "2.5%"]
       est.upper <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[3:(length(y) + 2), "97.5%"]
       est[[i]] <- rbind(est[[i]], cbind(est.es, est.lower, est.upper))
+      m.est.es <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[1, "mean"]
+      m.est.lower <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[1, "2.5%"]
+      m.est.upper <- rstan::summary(rema$meta$random$stanfit_dstudy)$summary[1, "97.5%"]
+      m.est[[i]] <- c(m.est.es, m.est.lower, m.est.upper)
     }
   }
   if(!extrainfo){
@@ -94,7 +103,8 @@ priors <- list(default = default.prior,
   } else {
     remaResult <- list(BFmu = BFmu,
                        BFtau = BFtau,
-                       est = est
+                       est = est,
+                       m.est = m.est
                        )
     return(remaResult)
   }
@@ -163,7 +173,7 @@ remaForest(m.211, rema.211$est$default) + ggtitle("Exlusion Criterion 211")
 remaForest(m.311, rema.311$est$default) + ggtitle("Exlusion Criterion 311")
 ```
 
-```{r}
+```{r, results="asis"}
 BFs.og <- cbind(rbind(rema.111$BFmu, rema.211$BFmu, rema.311$BFmu),
                 rbind(rema.111$BFtau, rema.211$BFtau, rema.311$BFtau))
 BFs.og <- round(BFs.og, 2)
@@ -193,7 +203,7 @@ remaForest(m.232, rema.232$est$default) + ggtitle("Exlusion Criterion 232")
 remaForest(m.332, rema.332$est$default) + ggtitle("Exlusion Criterion 332")
 ```
 
-```{r}
+```{r, results="asis"}
 BFs.cmnt <- cbind(rbind(rema.132$BFmu, rema.232$BFmu, rema.332$BFmu),
                   rbind(rema.132$BFtau, rema.232$BFtau, rema.332$BFtau))
 BFs.cmnt <- round(BFs.cmnt, 2)
@@ -220,7 +230,7 @@ for(i in sets){
 }
 ```
 
-```{r}
+```{r, results="asis"}
 rema.other <- round(rema.other, 2)
 rownames(rema.other) <- paste("Exclusion Criterion", sets)
 colnames(rema.other) <- c("Default", "Oosterwijk", "Vohs")
