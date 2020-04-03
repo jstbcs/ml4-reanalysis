@@ -18,7 +18,7 @@ ggplot2::theme_set(theme_apa(base_size = 14))
 ```
 
 ```{r re-fig-all, echo = F}
-forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
+forest.all <- function(obs.data, es.data, est.averaging, est.multilevel, legend.pos){
 # Returns a forest plot with observed and estimated effects
   
   I <- nrow(es.data)
@@ -67,7 +67,7 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
            ggplot2::geom_errorbarh(ggplot2::aes(xmin = dfBoth.mu$lower
                                                , xmax = dfBoth.mu$upper, colour = as.factor(dfBoth.mu$g))
                                   , height = .3, show.legend = FALSE, size = .8) +
-           ggplot2::scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
+           ggplot2::scale_y_continuous(breaks = I:1, labels = rep(" ", I),
                                     expand = c(0, 0.5)) +
            ggplot2::scale_color_manual("", values = c("black", "slategrey"), labels = c("Estimated", "Observed")) +
            ggplot2::scale_shape_manual("", values = c(16, 15)) +
@@ -78,14 +78,16 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
            ggplot2::ylab(" ") +
            theme(axis.line.y = element_blank(),
                  axis.ticks.y = element_blank(),
-                 legend.position = "none")
+                 legend.margin = margin(t = 0, unit='cm'),
+                 legend.position = if(legend.pos == 2){c(0.1, 0.15)}else{"none"})
 
   plot.av <- ggplot(dfBoth.av, aes(x = es, y = y)) +
         geom_vline(xintercept = 0, linetype = "dotted") +
         geom_point(aes(shape = as.factor(dfBoth.av$g), colour = as.factor(dfBoth.av$g)), size = 3) +
-        geom_errorbarh(aes(xmin = dfBoth.av$lower, xmax = dfBoth.av$upper, colour = as.factor(dfBoth.av$g)),
-                        , height = .3, show.legend = FALSE, size = .8) +
-        scale_y_continuous(breaks = I:1, labels = rep(" ", I),
+        ggplot2::geom_errorbarh(ggplot2::aes(xmin = dfBoth.av$lower
+                                               , xmax = dfBoth.av$upper, colour = as.factor(dfBoth.av$g))
+                                  , height = .3, show.legend = FALSE, size = .8) +
+        scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
                                     expand = c(0, 0.5)) +
         scale_color_manual("", values = c("black", "slategrey"), 
                                     labels = c(gettext("Estimated"), gettext("Observed"))) +
@@ -96,13 +98,12 @@ forest.all <- function(obs.data, es.data, est.averaging, est.multilevel){
         ylab(" ") +
         theme(axis.line.y = element_blank(),
               axis.ticks.y = element_blank(),
-              legend.margin = margin(t = 0, unit='cm'),
-              legend.position = c(0.1, 0.15))
+              legend.position = if(legend.pos == 1){c(0.8, 1)}else{"none"})
 
-  ggarrange(plot.mu, plot.av,
+  ggarrange(plot.av, plot.mu,
             labels = c("A.", "B."),
             ncol = 2, nrow = 2
-            , widths = c(.62, .38))
+            , widths = c(.64, .36))
 }
 ```
 
@@ -129,19 +130,26 @@ m.211$labelpretty <- c("Ashland University", "Azusa Pacific University", "Brigha
 
 m.311$source
 m.311$labelpretty <- c("Ashland University", "Brigham Young University - Idaho", "The College of New Jersey", "University of Kansas - Expert", "Occidental College", "Pace University - Expert", "University of California, Riverside", "University of Wisconsin - Expert", "Virginia Commonwealth University")
+
+m.332$source
+m.332$labelpretty <- c("Brigham Young University - Idaho", "The College of New Jersey", "Occidental College", "Pace University - Expert", "University of California, Riverside", "University of Wisconsin - Expert", "Virginia Commonwealth University")
 ```
 
 
 ```{r forests-111, fig.width=10, fig.height=14}
-forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111$est$default, est.multilevel = rean.111$effects)
+forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111$est$default, est.multilevel = rean.111$effects, legend.pos = 2)
 ```
 
 ```{r forests-211, fig.width=10, fig.height=10}
-forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211$est$default, est.multilevel = rean.211$effects)
+forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211$est$default, est.multilevel = rean.211$effects, legend.pos = 2)
 ```
 
 ```{r forests-311, fig.width=10, fig.height=9}
-forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311$est$default, est.multilevel = rean.311$effects)
+forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311$est$default, est.multilevel = rean.311$effects, legend.pos = 2)
+```
+
+```{r forests-332, fig.width=10, fig.height=9}
+forest.all(obs.data = dat.332, es.data = m.332, est.averaging = rema.332$est$default, est.multilevel = rean.332$effects, legend.pos = 1)
 ```
 
 
@@ -184,7 +192,7 @@ yrange <- c(1/50, 50) # log scale
 # Plot with n participants included on the x-axis, BF01 on the y-axis, colors for
 # participant exclusion sets and bubble sizes for number of studies included
 ggplot(aes(x = N, y = bf, size = Nscaled, color = as.factor(prior)), data = result) +
-  geom_jitter(alpha = 0.6, width = 15) +
+  geom_point(alpha = 0.6) +
   scale_y_continuous(trans='log', limits = yrange, breaks = c(1/50, 1/5, 1, 5, 50)) +
   scale_size_identity() +
   scale_colour_brewer(palette = 'Dark2') +
@@ -230,7 +238,7 @@ apa_table(tab.all
 
 Overall effect size estimates
 
-```{r}
+```{r, cache = T}
 default.prior.unconstrained     <- prior(family = "t",
                                          param = c(0, 0.707, 1)
                                          )
@@ -242,7 +250,7 @@ rema.211.es <- .runRema(m.211$yi, m.211$sei, priors.es, TRUE)
 rema.311.es <- .runRema(m.311$yi, m.311$sei, priors.es, TRUE)
 ```
 
-```{r}
+```{r, cache = T}
 rema.132.es <- .runRema(m.132$yi, m.132$sei, priors.es, TRUE)
 rema.232.es <- .runRema(m.232$yi, m.232$sei, priors.es, TRUE)
 rema.332.es <- .runRema(m.332$yi, m.332$sei, priors.es, TRUE)
@@ -265,13 +273,17 @@ kable(round(es.tab, 2), col.names = c("ES", "2.5%", "95%"))
 
 
 ```{r forests-111-unconstrained, fig.width=10, fig.height=14}
-forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111.es$est$default, est.multilevel = rean.111$effects)
+forest.all(obs.data = dat.111, es.data = m.111, est.averaging = rema.111.es$est$default, est.multilevel = rean.111$effects, legend.pos = 2)
 ```
 
 ```{r forests-211-unconstrained, fig.width=10, fig.height=10}
-forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211.es$est$default, est.multilevel = rean.211$effects)
+forest.all(obs.data = dat.211, es.data = m.211, est.averaging = rema.211.es$est$default, est.multilevel = rean.211$effects, legend.pos = 2)
 ```
 
 ```{r forests-311-unconstrained, fig.width=10, fig.height=9}
-forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311.es$est$default, est.multilevel = rean.311$effects)
+forest.all(obs.data = dat.311, es.data = m.311, est.averaging = rema.311.es$est$default, est.multilevel = rean.311$effects, legend.pos = 2)
+```
+
+```{r forests-332-unconstrained, fig.width=10, fig.height=9}
+forest.all(obs.data = dat.332, es.data = m.332, est.averaging = rema.332.es$est$default, est.multilevel = rean.332$effects, legend.pos = 1)
 ```
