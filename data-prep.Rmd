@@ -81,15 +81,17 @@ nrow(merged)
 # sum(is.na(merged$countryofbirth))
 
 levels(merged$countryofbirth)
-merged$usborn <- ifelse(merged$countryofbirth %in% c(1, "united states", "United State", "United States", "United States of America"
-                                                     , "us", "US", "usa", "USA", "U.S.A", "U.S."
-                                                     , "The United States of America.", "America"), 1, 0)
+# merged$usborn <- ifelse(merged$countryofbirth %in% c(1, "united states", "United State", "United States", "United States of America"
+#                                                      , "us", "US", "usa", "USA", "U.S.A", "U.S."
+#                                                      , "The United States of America.", "America"), 1, 0)
+# not needed anymore)
 
 levels(merged$race)
-merged$iswhite <- ifelse(merged$race %in% c(1, "White/Caucasian ", "White/Caucasian/Welsh,German,Italian", "white ", "Irish American "
-                                            , "1 AND 2", "1 AND 4 AND 5", "1 AND 6", "1,2", "1,2,4", "1,3", "1,3,4", "1,4", "1,4,5"
-                                            , "1,4,6", "1,5", "1,6", "white/ native american", "African American and White "
-                                            , "Caucasion & Hispanic/Latina", "Thai and Caucasian"), 1, 0)
+# merged$iswhite <- ifelse(merged$race %in% c(1, "White/Caucasian ", "White/Caucasian/Welsh,German,Italian", "white ", "Irish American "
+#                                             , "1 AND 2", "1 AND 4 AND 5", "1 AND 6", "1,2", "1,2,4", "1,3", "1,3,4", "1,4", "1,4,5"
+#                                             , "1,4,6", "1,5", "1,6", "white/ native american", "African American and White "
+#                                             , "Caucasion & Hispanic/Latina", "Thai and Caucasian"), 1, 0)
+# not needed anymore
 
 # Create variables, indexes, and exclusion rules ----
 # compute exclusion rules
@@ -105,8 +107,8 @@ merged <- mutate(merged,
                  #3. Identify as White (race == 1)
                  #4. Born in USA (countryofbirth == 1)
                  pass_ER2 = pass_ER1 &
-                   (iswhite == 1) & # white ps, NA race discarded
-                   (usborn == 1),
+                   (race == "1") & # white ps, NA race discarded
+                   (countryofbirth == "1"),
                  # Exclusion rule 3:
                  # as above, plus
                  # 5. Score a 7 or higher on the American Identity item

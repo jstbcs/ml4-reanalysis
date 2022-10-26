@@ -23,7 +23,7 @@ bayesBF <- function(dat, rScale = c(1, .4, .24), M = 30000, Mprior = 200000)
 	N <- nrow(dat)
 	J <- length(unique(dat$source))
 	loc <- unique(dat$source)
-	cond <- 2 - as.numeric(dat$ms_condition)
+	cond <- 2 - as.numeric(as.factor(dat$ms_condition))
 	alpha <- 1:J
 	beta <- (J + 2):(2 * J + 1)
 	mu <- J + 1
